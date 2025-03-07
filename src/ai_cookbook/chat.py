@@ -40,7 +40,7 @@ def basic_chat(
 
     client = AzureOpenAI(
         api_key=api_key,
-        api_version="2024-02-15-preview",
+        api_version="2024-10-21",
         azure_endpoint=endpoint
     )
 

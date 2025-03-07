@@ -69,7 +69,7 @@ def basic_chat(
 def main() -> None:
     """Example usage of basic chat completion."""
     try:
-        # Example: Generate a limerick about Python
+        # Example: Generate a poem about empathy
         response = basic_chat(
             prompt="Write a poem about empathy. Make it nice and simple, a little homorous.",
             model="gpt-4o",  # Make sure this matches your deployment name

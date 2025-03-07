@@ -1,7 +1,7 @@
 # AI Cookbook
 
 A collection of AI patterns and recipes using Azure OpenAI GPT-4 and Claude 3.5 Sonnet v2 via AWS Bedrock.
-This project can be opened used with Windsurf AI IDE.
+This project can be extended with Windsurf AI IDE.
 You can subscribe to Windsurf at https://codeium.com/refer?referral_code=5o03sz1fshqlzdx0
 
 ## Setup

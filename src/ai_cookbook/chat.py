@@ -19,7 +19,7 @@ def basic_chat(
 
     Args:
         prompt: The user's input prompt
-        model: The model deployment name in Azure OpenAI
+        model: The model deployment name in Azure OpenAI (default: 'gpt-4o')
         system_message: The system message to set context
         temperature: Controls randomness (0-1)
         max_tokens: Maximum number of tokens to generate

@@ -3,6 +3,7 @@
 import os
 from datetime import datetime
 from typing import List, Optional
+
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 from pydantic import BaseModel, field_validator
@@ -131,7 +132,7 @@ def main() -> None:
         # Example 1: Event with relative date (next Friday)
         print("\nExample 1: Event with relative date")
         event1 = extract_event_info(
-            text="Alice and Bob are going to a science fair next Friday at 2pm."
+            text="Jim and Bob are going to a science fair next Friday at 2pm."
         )
         print("Extracted Event Information:")
         print(f"Name: {event1.name}")
@@ -153,7 +154,7 @@ def main() -> None:
         # Example 3: Event with day of week
         print("\nExample 3: Event with day of week")
         event3 = extract_event_info(
-            text="Eve is presenting at the AI conference this Monday afternoon."
+            text="James is presenting at the AI conference this Monday afternoon."
         )
         print("Extracted Event Information:")
         print(f"Name: {event3.name}")

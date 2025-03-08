@@ -1,10 +1,10 @@
 """Tests for the chat module."""
 
-from typing import TYPE_CHECKING, Any
-import os
 import sys
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
 import pytest
 
 # Add src directory to Python path

@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict
 
 from dotenv import load_dotenv
 from openai import AzureOpenAI

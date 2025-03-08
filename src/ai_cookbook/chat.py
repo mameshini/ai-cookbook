@@ -1,7 +1,8 @@
 """Module for handling chat completions via Azure OpenAI API."""
 
-from typing import List, Dict, Optional
 import os
+from typing import Dict, List, Optional
+
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 

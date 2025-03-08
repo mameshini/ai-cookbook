@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict
 
 import requests
 from dotenv import load_dotenv

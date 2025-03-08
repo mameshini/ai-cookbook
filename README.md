@@ -84,8 +84,11 @@ To debug tests:
 └── requirements.txt      # Project dependencies
 ```
 
-### Key Components
+### Building Blocks and Patterns
 
+This project demonstrates several key patterns for working with Azure OpenAI:
+
+#### Basic Chat Completion
 - `chat.py`: Implements LLM chat completion with:
   - Support for Azure OpenAI GPT-4
   - Type annotations for better code clarity
@@ -93,6 +96,28 @@ To debug tests:
   - Error handling for missing credentials
   - Configurable parameters (temperature, max_tokens)
 
+#### Structured Output Pattern
+- `structured.py`: Implements structured data extraction with:
+  - Pydantic models for data validation
+  - Calendar event information parsing
+  - Date extraction in YYYY-MM-DD format
+  - Time extraction in 24-hour HH:MM format
+  - Azure OpenAI's beta.chat.completions.parse functionality
+
+#### Function Calling Pattern
+- `tools.py`: Demonstrates function calling capabilities:
+  - Real-time weather data retrieval 
+  - Integration with open-meteo.com weather API
+  - Structured responses with natural language context
+
+#### Retrieval Pattern
+- `retrieval.py`: Knowledge base interaction using:
+  - JSON-based e-commerce knowledge store
+  - Function calling for policy and service information
+  - Graceful handling of out-of-scope questions
+  - Source attribution with record IDs
+
+#### Testing
 - `test_chat.py`: Test suite with:
   - Real API integration tests for Azure OpenAI
   - Mocked tests using pytest fixtures

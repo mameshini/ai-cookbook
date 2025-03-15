@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import time
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from dotenv import load_dotenv
@@ -23,62 +24,82 @@ from pydantic import BaseModel, Field, field_validator
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
 
 
-class ValidationResponse(BaseModel):
-    """Pydantic model for validation response.
+class EventExtraction(BaseModel):
+    """First LLM call: Extract basic event information.
 
     Attributes:
-        is_valid: Whether the input is a valid calendar request
-        confidence: Confidence score between 0 and 1
-        reasoning: Explanation for the decision
+        description: Raw description of the event
+        is_calendar_event: Whether this text describes a calendar event
+        confidence_score: Confidence score between 0 and 1
     """
-    is_valid: bool = Field(..., description="Whether the input is a valid calendar request")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0 and 1")
-    reasoning: str = Field(..., min_length=1, description="Explanation for the decision")
+    description: str = Field(description="Raw description of the event")
+    is_calendar_event: bool = Field(
+        description="Whether this text describes a calendar event"
+    )
+    confidence_score: float = Field(description="Confidence score between 0 and 1")
 
 
-class CalendarRequest(BaseModel):
-    """Pydantic model for calendar request details.
+class EventDetails(BaseModel):
+    """Second LLM call: Parse specific event details.
 
     Attributes:
-        date: The date of the event in YYYY-MM-DD format
-        time: The time of the event in HH:MM format
-        duration: Duration of the event in minutes
-        participants: List of participant email addresses
-        title: Title of the event
-        description: Optional description of the event
+        name: Name of the event
+        date: Date and time of the event in ISO 8601 format
+        duration_minutes: Expected duration in minutes
+        participants: List of participants
     """
-    date: str = Field(..., pattern=r'^\d{4}-\d{2}-\d{2}$', description="Date in YYYY-MM-DD format")
-    time: str = Field(..., pattern=r'^\d{2}:\d{2}$', description="Time in HH:MM format")
-    duration: int = Field(..., gt=0, description="Duration in minutes")
-    participants: List[str] = Field(..., min_length=1, description="List of participant email addresses")
-    title: str = Field(..., min_length=1, description="Title of the event")
-    description: Optional[str] = Field(None, description="Optional description of the event")
+    name: str = Field(description="Name of the event")
+    date: str = Field(
+        description="Date and time of the event. Use ISO 8601 format."
+    )
+    duration_minutes: int = Field(description="Expected duration in minutes")
+    participants: List[str] = Field(description="List of participants")
 
-    @field_validator('participants')
+    @field_validator('date')
     @classmethod
-    def validate_email_addresses(cls, v: List[str]) -> List[str]:
-        """Validate that all participants have email addresses.
+    def validate_date_format(cls, v: str) -> str:
+        """Validate that the date is in ISO 8601 format.
 
         Args:
-            v: List of participant email addresses
+            v: Date string to validate
 
         Returns:
-            The validated list of email addresses
+            The validated date string
 
         Raises:
-            ValueError: If any email address is invalid
+            ValueError: If date format is invalid
         """
-        for email in v:
-            if '@' not in email:
-                raise ValueError(f"Invalid email address: {email}")
-        return v
+        try:
+            datetime.fromisoformat(v)
+            return v
+        except ValueError:
+            raise ValueError("Date must be in ISO 8601 format")
+
+
+class EventConfirmation(BaseModel):
+    """Third LLM call: Generate confirmation message.
+
+    Attributes:
+        confirmation_message: Natural language confirmation message
+        calendar_link: Optional generated calendar link
+    """
+    confirmation_message: str = Field(
+        description="Natural language confirmation message"
+    )
+    calendar_link: Optional[str] = Field(
+        description="Generated calendar link if applicable"
+    )
 
 
 class PromptChainProcessor:
@@ -108,18 +129,18 @@ class PromptChainProcessor:
         """Initialize the PromptChainProcessor.
 
         Args:
-            model: The model deployment name in Azure OpenAI (default: 'gpt-4o')
-            temperature: Controls randomness (0-1)
-            max_tokens: Maximum number of tokens to generate
+            model: Azure OpenAI model deployment name
+            temperature: Controls randomness in responses (0-1)
+            max_tokens: Maximum tokens in response
             max_retries: Maximum number of retries for API calls
             initial_retry_delay: Initial delay between retries in seconds
             max_retry_delay: Maximum delay between retries in seconds
-        
+
         Raises:
-            ValueError: If Azure OpenAI credentials are not properly set
+            ValueError: If Azure OpenAI credentials are not set
         """
         api_key = os.getenv("AZURE_OPENAI_API_KEY")
-        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("AZ_OPENAI_ENDPOINT")
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
 
         if not api_key or not endpoint:
             raise ValueError("Azure OpenAI credentials must be set in environment variables")
@@ -136,272 +157,210 @@ class PromptChainProcessor:
         self.initial_retry_delay = initial_retry_delay
         self.max_retry_delay = max_retry_delay
 
-        # Configure retry decorator
-        self._retry_decorator = retry(
-            stop=stop_after_attempt(max_retries),
-            wait=wait_exponential(
-                multiplier=initial_retry_delay,
-                max=max_retry_delay
-            ),
-            reraise=True
-        )
-
-    def _extract_json_from_response(self, response: str) -> Dict:
-        """Extract JSON from a response that might be wrapped in markdown code blocks.
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True
+    )
+    def extract_event_info(self, user_input: str) -> EventExtraction:
+        """First LLM call to determine if input is a calendar event.
 
         Args:
-            response: Response string from the API
+            user_input: Raw user input text
 
         Returns:
-            Parsed JSON dictionary
+            EventExtraction object with validation results
 
         Raises:
-            json.JSONDecodeError: If JSON parsing fails
+            ValueError: If the input is empty or invalid
+            Exception: If the API call fails after all retries
         """
-        logger.debug(f"Attempting to extract JSON from response: {response}")
+        if not user_input or not user_input.strip():
+            raise ValueError("Input text cannot be empty")
 
-        # Try parsing as pure JSON first
+        logger.info("Starting event extraction analysis")
+        logger.debug(f"Input text: {user_input}")
+
         try:
-            return json.loads(response)
-        except json.JSONDecodeError:
-            logger.debug("Failed to parse response as pure JSON")
+            today = datetime.now()
+            date_context = f"Today is {today.strftime('%A, %B %d, %Y')}."
 
-        # Try extracting JSON from markdown code block
-        if '```json' in response and '```' in response:
-            try:
-                json_str = response.split('```json')[1].split('```')[0].strip()
-                return json.loads(json_str)
-            except (IndexError, json.JSONDecodeError):
-                logger.debug("Failed to extract JSON from markdown code block")
-
-        # Try finding any JSON-like structure
-        try:
-            start = response.find('{')
-            end = response.rfind('}')
-            if start != -1 and end != -1:
-                return json.loads(response[start:end + 1])
-        except json.JSONDecodeError:
-            logger.debug("Failed to extract JSON from response content")
-
-        error_msg = "Could not extract valid JSON from response"
-        logger.error(f"{error_msg}: {response}")
-        raise json.JSONDecodeError(error_msg, response, 0)
+            completion = self.client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"{date_context} Analyze if the text describes a calendar event."
+                    },
+                    {"role": "user", "content": user_input}
+                ],
+                response_format=EventExtraction
+            )
+            result = completion.choices[0].message.parsed
+            logger.info(
+                f"Extraction complete - Is calendar event: {result.is_calendar_event}, "
+                f"Confidence: {result.confidence_score:.2f}"
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error in event extraction: {str(e)}")
+            raise
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, max=10),
         reraise=True
     )
-    def _call_llm(self, messages: List[Dict[str, str]]) -> str:
-        """Make a call to Azure OpenAI API with automatic retries.
+    def parse_event_details(self, description: str) -> EventDetails:
+        """Second LLM call to extract specific event details.
 
         Args:
-            messages: List of message dictionaries with role and content
+            description: Raw event description
 
         Returns:
-            The model's response as a string
+            EventDetails object with parsed information
 
         Raises:
+            ValueError: If the description is empty or invalid
             Exception: If the API call fails after all retries
         """
+        if not description or not description.strip():
+            raise ValueError("Event description cannot be empty")
+
+        logger.info("Starting event details parsing")
+
         try:
-            params = {
-                "model": self.model,
-                "messages": messages,
-                "temperature": self.temperature,
-            }
-            if self.max_tokens is not None:
-                params["max_tokens"] = self.max_tokens
+            today = datetime.now()
+            date_context = f"Today is {today.strftime('%A, %B %d, %Y')}."
 
-            logger.debug(f"Making API call with params: {params}")
-            start_time = time.time()
-
-            completion = self.client.chat.completions.create(**params)
-            response = completion.choices[0].message.content or ""
-
-            elapsed_time = time.time() - start_time
-            logger.info(f"API call completed in {elapsed_time:.2f} seconds")
-            logger.debug(f"Received response: {response}")
-
-            return response
+            completion = self.client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"{date_context} Extract detailed event information. "
+                                   "When dates reference relative dates like 'next Tuesday', "
+                                   "use this current date as reference."
+                    },
+                    {"role": "user", "content": description}
+                ],
+                response_format=EventDetails
+            )
+            result = completion.choices[0].message.parsed
+            logger.info(
+                f"Parsed event details - Name: {result.name}, Date: {result.date}, "
+                f"Duration: {result.duration_minutes}min"
+            )
+            logger.debug(f"Participants: {', '.join(result.participants)}")
+            return result
         except Exception as e:
-            logger.error(f"API call failed: {str(e)}")
+            logger.error(f"Error in event parsing: {str(e)}")
             raise
 
-    def extract_and_validate(self, user_input: str) -> Tuple[bool, float, str]:
-        """Step 1: Extract and validate if the input is a calendar request.
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True
+    )
+    def generate_confirmation(self, event_details: EventDetails) -> EventConfirmation:
+        """Third LLM call to generate a confirmation message.
 
         Args:
-            user_input: The user's input text
+            event_details: Parsed event details
 
         Returns:
-            Tuple containing:
-            - Boolean indicating if input is a valid calendar request
-            - Confidence score (0-1)
-            - Reasoning for the decision
-        """
-        system_message = """You are a calendar request validator. 
-        Analyze the input and determine if it's a valid calendar request.
-        Respond in JSON format with three fields:
-        {
-            "is_valid": true/false,
-            "confidence": 0.0-1.0,
-            "reasoning": "explanation"
-        }
-        """
-        
-        messages = [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": user_input}
-        ]
-        
-        response = self._call_llm(messages)
-        result = self._extract_json_from_response(response)
-        return (result["is_valid"], result["confidence"], result["reasoning"])
-
-    def parse_details(self, user_input: str) -> CalendarRequest:
-        """Step 2: Parse the calendar request details.
-
-        Args:
-            user_input: The validated calendar request text
-
-        Returns:
-            CalendarRequest object containing structured event details
+            EventConfirmation object with confirmation message
 
         Raises:
-            ValueError: If the response cannot be parsed or is invalid
+            ValueError: If event_details is None
+            Exception: If the API call fails after all retries
         """
-        system_message = """You are a calendar request parser.
-        Extract calendar event details from the input and respond in JSON format with:
-        {
-            "date": "YYYY-MM-DD",
-            "time": "HH:MM",
-            "duration": minutes_as_integer,
-            "participants": ["email1", "email2"],
-            "title": "event title",
-            "description": "optional description"
-        }
-        """
-        
+        if not event_details:
+            raise ValueError("Event details cannot be None")
+
+        logger.info("Generating confirmation message")
+
         try:
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": user_input}
-            ]
-            
-            response = self._call_llm(messages)
-            result_dict = self._extract_json_from_response(response)
-            
-            # Validate and create CalendarRequest using Pydantic model
-            calendar_request = CalendarRequest(**result_dict)
-            logger.info(
-                f"Parsed calendar request: {calendar_request.date} at {calendar_request.time}, "
-                f"{len(calendar_request.participants)} participants"
+            completion = self.client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Generate a natural confirmation message for the event. "
+                                   "Include all relevant details in a clear format, making sure to:\n"
+                                   "1. List all participant email addresses and names (if available) in Paricipants: line\n"
+                                   "2. Use the following format for the Participants: Participants:" 
+                                   " john@example.com; \"Sarah\" sarah@example.com"
+                                   "3. Use 12-hour time format with AM/PM (e.g., 2:00 PM instead of 14:00)\n"
+                                   "4. Do not use - or * for formatting of field names"
+                                   "5. Sign off with your name; Calendar Assistant"
+                    },
+                    {"role": "user", "content": json.dumps(event_details.model_dump())}
+                ],
+                response_format=EventConfirmation
             )
-            
-            return calendar_request
+            result = completion.choices[0].message.parsed
+            logger.info("Confirmation message generated successfully")
+            return result
         except Exception as e:
-            logger.error(f"Failed to parse calendar details: {str(e)}")
-            raise ValueError(f"Failed to parse calendar details: {str(e)}")
+            logger.error(f"Error in confirmation generation: {str(e)}")
+            raise
 
-    def generate_confirmation(self, calendar_request: CalendarRequest) -> str:
-        """Step 3: Generate a user-friendly confirmation message.
-
-        Args:
-            calendar_request: The parsed calendar request details
-
-        Returns:
-            A natural language confirmation message
-
-        Raises:
-            ValueError: If the confirmation message cannot be generated
-        """
-        try:
-            system_message = """You are a helpful calendar assistant.
-            Generate a friendly confirmation message for the calendar event.
-            Include all relevant details in a clear, concise format.
-            When formatting dates, use both the ISO format (YYYY-MM-DD) and human-readable format.
-            """
-            
-            event_details = f"""
-            Event: {calendar_request.title}
-            Date: {calendar_request.date}
-            Time: {calendar_request.time}
-            Duration: {calendar_request.duration} minutes
-            Participants: {', '.join(calendar_request.participants)}
-            Description: {calendar_request.description or 'N/A'}
-            """
-            
-            messages = [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": f"Generate confirmation for:\n{event_details}"}
-            ]
-            
-            confirmation = self._call_llm(messages)
-            logger.info(f"Generated confirmation for event on {calendar_request.date}")
-            
-            return confirmation
-        except Exception as e:
-            logger.error(f"Failed to generate confirmation: {str(e)}")
-            raise ValueError(f"Failed to generate confirmation: {str(e)}")
-
-    def process_request(self, user_input: str) -> str:
+    def process_calendar_request(self, user_input: str) -> Tuple[bool, str]:
         """Process a calendar request through the entire prompt chain.
 
         Args:
-            user_input: The user's calendar request text
+            user_input: Raw user input string
 
         Returns:
-            A confirmation message if successful, or an error message if validation fails
-
-        Note:
-            This method will never return None. It will always return either a success
-            or error message to provide clear feedback to the user.
+            Tuple of (success: bool, message: str)
         """
         try:
-            # Step 1: Extract and Validate
-            logger.info("Step 1: Validating calendar request")
-            is_valid, confidence, reasoning = self.extract_and_validate(user_input)
-            if not is_valid or confidence < 0.7:
-                return f"Sorry, I couldn't process that as a calendar request. {reasoning}"
+            # Step 1: Extract and validate event info
+            event_info = self.extract_event_info(user_input)
+            if not event_info.is_calendar_event:
+                return False, f"Not a valid calendar request (confidence: {event_info.confidence_score:.2f})"
 
-            # Step 2: Parse Details
-            logger.info("Step 2: Parsing calendar details")
-            calendar_details = self.parse_details(user_input)
+            # Step 2: Parse event details
+            event_details = self.parse_event_details(event_info.description)
 
-            # Step 3: Generate Confirmation
-            logger.info("Step 3: Generating confirmation message")
-            return self.generate_confirmation(calendar_details)
+            # Step 3: Generate confirmation
+            confirmation = self.generate_confirmation(event_details)
 
-        except ValueError as e:
-            error_msg = str(e)
-            logger.error(f"Failed to process request: {error_msg}")
-            return f"Sorry, I encountered an error while processing your request: {error_msg}"
+            return True, confirmation.confirmation_message
 
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Unexpected error while processing request: {error_msg}")
-            return "Sorry, an unexpected error occurred while processing your request. Please try again."
+            error_msg = f"Error processing calendar request: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
 
 
 def main() -> None:
     """Example usage of the prompt chaining pattern."""
+    # Initialize the processor
     processor = PromptChainProcessor(
-        model="gpt-4o",  # Make sure this matches your deployment name
-        temperature=0.7
+        model="gpt-4o",  # Use your deployed model name
+        temperature=0.7,
+        max_tokens=1000
     )
 
-    # Example calendar request
-    user_input = """Schedule a team meeting for next Tuesday at 2 PM.
-    It will be a 1-hour discussion with john@example.com and sarah@example.com
-    about the Q2 planning."""
+    # Example calendar requests
+    requests = [
+        "Schedule a team meeting next Tuesday at 2pm for 1 hour with john@example.com "
+        "and sarah@example.com to discuss the Q2 roadmap.",
+        "Can you order pizza for dinner?",  # Non-calendar request
+        "Set up a quick sync tomorrow morning at 9am with the dev team "
+        "(dev-team@company.com) for 30 minutes."
+    ]
 
-    try:
-        result = processor.process_request(user_input)
-        print("Response:")
-        print(result)
-    except Exception as e:
-        print(f"Error: {str(e)}")
+    # Process each request
+    for i, request in enumerate(requests, 1):
+        print(f"\nProcessing Request #{i}:")
+        print(f"Input: {request}")
+        success, message = processor.process_calendar_request(request)
+        print("Result: " + ("Success" if success else "Failed"))
+        print(f"Message: {message}\n")
+        print("-" * 80)
 
 
 if __name__ == "__main__":

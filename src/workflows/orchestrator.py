@@ -49,6 +49,38 @@ client = AzureOpenAI(
 )
 model = "gpt-4o"  # Azure OpenAI deployment name
 
+# Reviewer prompt template
+REVIEWER_PROMPT = """You are a skilled technical editor reviewing a blog post.
+Topic: {topic}
+Target Audience: {audience}
+
+Review the following blog post sections and provide:
+1. A cohesion score (0-1) indicating how well sections flow together, focusing on:
+   - Logical progression of technical concepts
+   - Consistent terminology and technical depth
+   - Clear transitions between sections
+   - References to previous sections when building on concepts
+   - Connection between theoretical concepts and practical examples
+
+2. Suggested edits for specific sections to improve:
+   - Technical accuracy and clarity
+   - Transitions between sections (e.g., "Building on our discussion of X...", "Having explored Y, let's examine...")
+   - Consistent level of technical detail
+   - Cross-references to related concepts
+   - Code example integration with explanations
+   - Practical applications of theoretical concepts
+
+3. A complete, polished version that:
+   - Maintains consistent technical terminology
+   - Builds concepts progressively
+   - Links theoretical and practical aspects
+   - Provides clear technical transitions
+   - References earlier concepts when introducing new ones
+
+Blog Post:
+{sections}"""
+
+
 # Define prompts
 ORCHESTRATOR_PROMPT = """
 Analyze this blog topic and break it down into logical sections.
@@ -375,7 +407,7 @@ class BlogOrchestrator:
                         )
                     }
                 ],
-                response_format=ReviewFeedback,
+                response_format=ReviewResponse,  # Use ReviewResponse for initial review
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
@@ -440,12 +472,17 @@ class BlogOrchestrator:
                         )
                     }
                 ],
-                response_format=SectionContent,
+                response_format=SectionResponse,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
             
-            return completion.choices[0].message.parsed
+            response = completion.choices[0].message.parsed
+            return SectionContent(
+                section_type=section_type,  # Preserve the original section type
+                content=response.content,
+                key_points=response.key_points
+            )
             
         except Exception as e:
             logger.error("Error revising section: %s", str(e))
@@ -509,16 +546,47 @@ class BlogOrchestrator:
             
             # Get final review of revised content
             # Combine revised sections for final review
-            combined_revised = "\n\n".join(
-                f"=== Section {i+1}. {section.section_type} ===\n{section.content}"
-                for i, section in enumerate(revised_sections)
+            combined_revised = []
+            for i, section in enumerate(revised_sections):
+                # Use actual section index (1-based) for display
+                section_num = i + 1
+                section_header = f"=== Section {section_num}. {section.section_type} ===\n{section.content}"
+                combined_revised.append(section_header)
+            
+            combined_revised = "\n\n".join(combined_revised)
+            
+            # Get final review to check cohesion improvements
+            final_completion = client.beta.chat.completions.parse(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """You are a skilled editor reviewing the revised blog post.
+                            Topic: {topic}
+                            Target Audience: {audience}
+                            
+                            Review the revised blog post and provide:
+                            1. A cohesion score (0-1) indicating how well sections flow together
+                            2. Verify that previous cohesion issues have been addressed
+                            3. A complete, polished version that reads as one cohesive piece
+                            
+                            Blog Post:
+                            {content}""".format(
+                            topic=topic,
+                            audience=plan.target_audience,
+                            content=combined_revised
+                        )
+                    }
+                ],
+                response_format=ReviewResponse,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens
             )
             
-            # Create final review response
             final_review = ReviewFeedback(
-                cohesion_score=review.cohesion_score,  # Keep original score for comparison
+                cohesion_score=final_completion.choices[0].message.parsed.cohesion_score,
                 suggested_edits=[],  # No more edits needed
-                final_version=combined_revised  # Use the revised content
+                final_version=final_completion.choices[0].message.parsed.final_version
             )
             
             return {

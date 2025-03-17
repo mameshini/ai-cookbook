@@ -115,15 +115,20 @@ graph LR
     B --> C[Planning Phase]
     C --> D[Writing Phase]
     D --> E[Review Phase]
+    E --> F[Revision Phase]
+    F --> G[Final Review]
+    G --> H[Output]
     style D fill:#f9f,stroke:#333,stroke-width:2px
+    style F fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 #### Orchestrator
 
 - Analyzes the blog topic and requirements
 - Creates structured content plan
-- Coordinates section writing
+- Coordinates section writing and revision
 - Manages content flow and cohesion
+- Ensures type safety with Pydantic models
 
 #### Planning Phase
 
@@ -132,6 +137,7 @@ graph LR
 - Breaks content into logical sections
 - Assigns word count per section
 - Defines writing style guidelines
+- Returns OrchestratorPlan with structured tasks
 
 #### Writing Phase
 
@@ -139,17 +145,33 @@ graph LR
 - Each section maintains context from previous sections
 - Follows style and length guidelines
 - Captures key points for each section
+- Returns SectionContent with typed content
 
 #### Review Phase
 
 - Evaluates overall cohesion
 - Scores content flow (0-1)
 - Suggests section-specific improvements
-- Produces final polished version
+- Returns ReviewFeedback with structured edits
+
+#### Revision Phase
+
+- Applies suggested edits to each section
+- Preserves section types and structure
+- Maintains consistent terminology
+- Enhances transitions between sections
+- Returns revised SectionContent
+
+#### Final Review
+
+- Validates cohesion improvements
+- Ensures technical accuracy
+- Verifies section flow
+- Produces polished final version
 
 
 
-Sample Output:
+#### Example Output for Orchestrator Pattern
 === Initial Draft ===
 
 === Section 1. Introduction ===

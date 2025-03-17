@@ -72,9 +72,18 @@ To debug tests:
 
 ```
 ├── src/
-│   └── ai_cookbook/       # Main package directory
+│   ├── ai_cookbook/       # Core AI patterns
+│   │   ├── __init__.py
+│   │   ├── chat.py        # Chat completion implementation
+│   │   ├── structured.py  # Structured output pattern
+│   │   ├── tools.py       # Function calling pattern
+│   │   └── retrieval.py   # Knowledge base retrieval
+│   └── workflows/         # Advanced workflow patterns
 │       ├── __init__.py
-│       └── chat.py        # Chat completion implementation
+│       ├── README.md       # Workflow patterns documentation
+│       ├── orchestrator.py  # Blog post orchestration
+│       ├── routing.py      # Request classification
+│       └── parallelization.py  # Concurrent processing
 ├── tests/                 # Test directory
 │   ├── __init__.py
 │   └── test_chat.py      # Tests for chat functionality
@@ -116,6 +125,42 @@ This project demonstrates several key patterns for working with Azure OpenAI:
   - Function calling for policy and service information
   - Graceful handling of out-of-scope questions
   - Source attribution with record IDs
+
+#### Agentic Workflow Patterns
+- `src/workflows/`: Advanced AI workflow implementations:
+  - Orchestration + enriched LLMs form patterns of intelligent outcomes
+  - The key patterns are: prompt chaining, routing parallelization orchestration, evaluator-optimizer, and service agent
+  - Type-safe implementations using Python 3.11 and Pydantic
+  - PEP 8 and PEP 257 compliant with comprehensive docstrings
+  - Robust error handling and automatic retries with tenacity
+
+##### 1. Prompt Chaining Pattern (`prompt_chaining.py`)
+- Sequential processing of complex tasks
+- Each step refines or builds upon previous outputs
+- Strong validation between chain steps
+- Demonstrated in calendar request processing
+
+##### 2. Routing Pattern (`routing.py`)
+- Request classification and specialized handling
+- Calendar request routing implementation
+- Confidence scoring for request types
+- Clean separation of concerns
+
+##### 3. Parallelization Pattern (`parallelization.py`)
+- Concurrent LLM calls for validation
+- Calendar and security check parallelization
+- Efficient aggregation of validation results
+- Improved response times through parallel processing
+
+##### 4. Orchestrator Pattern (`orchestrator.py`)
+- Blog post creation orchestration using Azure OpenAI
+- Multi-phase workflow: Planning, Writing, Review, and Revision
+- Type-safe implementation with Pydantic models:
+  - `OrchestratorPlan`: Blog structure and tasks
+  - `SectionContent`: Written content and key points
+  - `ReviewFeedback`: Review score and suggested edits
+
+For detailed documentation of these patterns, see `src/workflows/README.md`.
 
 #### Testing
 - `test_chat.py`: Test suite with:

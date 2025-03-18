@@ -610,11 +610,11 @@ def main() -> None:
     orchestrator = BlogOrchestrator(temperature=0.1)
 
     # Example: Technical blog post
-    topic = "The impact of AI on software development"
+    topic = "how to calm autoimmune flare and sjogren's syndrome"
     result = orchestrator.write_blog(
         topic=topic,
         target_length=1200,
-        style="technical but accessible"
+        style="medically accurate but accessible and practical"
     )
 
     if "final_review" in result:

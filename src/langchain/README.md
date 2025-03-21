@@ -19,7 +19,7 @@ This agent implements the "ReAct" (Reason + Act) pattern, where the agent can:
 ```mermaid
 graph TD
     A[User Input] --> B[LangChain Agent]
-    B --> C{Reasoning \& Tools}
+    B --> C{Reasoning & Tools}
     
     C -->|Weather| D[Weather API Tool]
     C -->|Information| E[Wikipedia Tool]
@@ -34,7 +34,8 @@ graph TD
     EVAL -->|Yes| F[Response Generation]
     EVAL -->|No| B
 
-    F --> G[User Output]```
+    F --> G[User Output]
+```
 
 #### Components:
 1. **Tool Definition**

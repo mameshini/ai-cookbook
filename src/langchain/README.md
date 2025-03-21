@@ -26,6 +26,7 @@ graph TD
     C -->|Chat| L[LLM]
     D --> F[Response Generation]
     E --> F
+    L --> F
     F --> G[User Output]
     G --> M
 ```

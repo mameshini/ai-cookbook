@@ -4,8 +4,15 @@ This directory contains examples and patterns for building AI agents using LangC
 
 ### Chat Agent with Tool Usage
 
-The chat agent pattern demonstrates how to create an interactive AI assistant that can use external tools. Key features:
-prompt, AgentExecutor, model, tools, and memory
+The chat agent pattern demonstrates how to create an interactive AI assistant that can use external tools. 
+
+Key features: chain prompt, AgentExecutor, model, tools, and memory.
+This chain implements the "ReAct" (Reason + Act) pattern, where the agent can:
+
+1. Reason about what tools it needs
+2. Act by calling those tools
+3. Remember previous actions through the scratchpad
+4. Generate appropriate responses based on tool results
 
 
 ```mermaid
@@ -13,9 +20,10 @@ graph TD
     M[Conversation Memory]
     A[User Input] --> B[LangChain Agent]
     M --> B
-    B --> C{Tool Selection}
+    B --> C{Tool Selection & Reasoning Loop}
     C -->|Weather| D[Weather API Tool]
     C -->|Information| E[Wikipedia Tool]
+    C -->|Chat| L[LLM]
     D --> F[Response Generation]
     E --> F
     F --> G[User Output]

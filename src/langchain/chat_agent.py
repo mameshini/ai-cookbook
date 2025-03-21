@@ -92,9 +92,16 @@ def search_wikipedia(query: str) -> str:
     return "\n\n".join(summaries)
 
 
+@tool
+def get_current_datetime() -> str:
+    """Get the current date and time in a human-readable format."""
+    current_time = datetime.datetime.now()
+    return current_time.strftime("%A, %B %d, %Y at %I:%M:%S %p %Z")
+
+
 def setup_agent() -> AgentExecutor:
     """Set up the LangChain agent with tools and model."""
-    tools = [get_current_temperature, search_wikipedia]
+    tools = [get_current_temperature, search_wikipedia, get_current_datetime]
     set_debug(True)  # Enable debug mode for detailed logging
     functions = [format_tool_to_openai_function(f) for f in tools]
     
@@ -170,7 +177,7 @@ def create_ui() -> gr.Interface:
     
     interface = gr.ChatInterface(
         fn=chat_response,
-        title="🤖 AI Assistant - Weather & Wikipedia",
+        title="AI Assistant",
         description="""I can help you with:
         - 🌤️ Weather information for any city
         - 📚 Wikipedia searches and summaries

@@ -1,0 +1,89 @@
+# LangChain Patterns for Building AI Agents
+
+This directory contains examples and patterns for building AI agents using LangChain. 
+
+### Chat Agent with Tool Usage
+
+The chat agent pattern demonstrates how to create an interactive AI assistant that can use external tools. Key features:
+prompt, AgentExecutor, model, tools, and memory
+
+
+```mermaid
+graph TD
+    M[Conversation Memory]
+    A[User Input] --> B[LangChain Agent]
+    M --> B
+    B --> C{Tool Selection}
+    C -->|Weather| D[Weather API Tool]
+    C -->|Information| E[Wikipedia Tool]
+    D --> F[Response Generation]
+    E --> F
+    F --> G[User Output]
+    G --> M
+```
+
+#### Components:
+1. **Tool Definition**
+   - Pydantic models for input validation
+   - Type-safe function implementations
+   - Clear documentation and error handling
+
+2. **Agent Configuration**
+   - Azure OpenAI integration
+   - Conversation memory management
+   - Tool registration and formatting
+
+3. **UI Integration**
+   - Gradio interface for web interaction
+   - Async support for responsive UX
+   - Error handling and user feedback
+
+### Best Practices
+
+1. **Type Safety**
+   - Python 3.11 type hints throughout
+   - Pydantic models for data validation
+   - Clear return type definitions
+
+2. **Error Handling**
+   - Comprehensive try-except blocks
+   - User-friendly error messages
+   - Graceful fallbacks
+
+3. **Memory Management**
+   - Conversation history tracking
+   - Context-aware responses
+   - Efficient state management
+
+4. **Tool Integration**
+   - Modular tool definitions
+   - Clear input/output contracts
+   - Reusable components
+
+## Implementation Examples
+
+1. `chat_agent.py`: Demonstrates a full chat agent with:
+   - Weather lookup capability
+   - Wikipedia search integration
+   - Conversation memory
+   - Gradio web interface
+
+## Getting Started
+
+1. Ensure you have the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Set up your environment variables:
+   ```bash
+   AZURE_OPENAI_API_KEY="your_key"
+   AZURE_OPENAI_ENDPOINT="your_endpoint"
+   AZURE_OPENAI_DEPLOYMENT="your_deployment"
+   ```
+
+3. Run the chat agent:
+   ```bash
+   python chat_agent.py
+   ```
+

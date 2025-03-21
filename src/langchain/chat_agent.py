@@ -22,6 +22,7 @@ from langchain.agents import AgentExecutor
 from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.format_scratchpad import format_to_openai_functions
+from langchain.globals import set_debug
 
 
 # Load environment variables
@@ -45,7 +46,7 @@ class OpenMeteoInput(BaseModel):
 
 @tool(args_schema=OpenMeteoInput)
 def get_current_temperature(latitude: float, longitude: float) -> str:
-    """Fetch current temperature for given coordinates in Fahrenheit."""
+    """Fetch current temperature for given latitude and longitude in Fahrenheit"""
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     
     params = {
@@ -94,6 +95,7 @@ def search_wikipedia(query: str) -> str:
 def setup_agent() -> AgentExecutor:
     """Set up the LangChain agent with tools and model."""
     tools = [get_current_temperature, search_wikipedia]
+    set_debug(True)  # Enable debug mode for detailed logging
     functions = [format_tool_to_openai_function(f) for f in tools]
     
     model = AzureChatOpenAI(
@@ -123,6 +125,9 @@ def setup_agent() -> AgentExecutor:
     )
 
 
+# Initialize the agent globally
+_agent = setup_agent()
+
 def chat_response(message: str, history: List[List[str]]) -> str:
     """Process user message and return agent's response."""
     try:
@@ -131,8 +136,7 @@ def chat_response(message: str, history: List[List[str]]) -> str:
         for human, ai in history:
             formatted_history.extend([("human", human), ("ai", ai)])
         
-        agent = setup_agent()
-        response = agent.invoke({
+        response = _agent.invoke({
             "input": message,
             "chat_history": formatted_history
         })
@@ -143,15 +147,43 @@ def chat_response(message: str, history: List[List[str]]) -> str:
 
 def create_ui() -> gr.Interface:
     """Create and configure the Gradio UI."""
+    css = """
+    .example {
+        padding: 8px 12px !important;
+        border: 1px solid #ccc !important;
+        border-radius: 8px !important;
+        margin: 4px !important;
+        background-color: #f8f9fa !important;
+        transition: all 0.3s ease !important;
+    }
+    .example:hover {
+        background-color: #e9ecef !important;
+        border-color: #adb5bd !important;
+        transform: translateY(-1px) !important;
+    }
+    .examples {
+        gap: 8px !important;
+        flex-wrap: wrap !important;
+        padding: 10px !important;
+    }
+    """
+    
     interface = gr.ChatInterface(
         fn=chat_response,
-        title="AI Assistant",
-        description="Chat with an AI assistant that can check weather and search Wikipedia",
+        title="🤖 AI Assistant - Weather & Wikipedia",
+        description="""I can help you with:
+        - 🌤️ Weather information for any city
+        - 📚 Wikipedia searches and summaries
+        - 💬 Engaging conversation on various topics""",
         theme="soft",
+        css=css,
         examples=[
             "What's the weather in San Francisco?",
+            "What's the temperature in Tokyo?",
             "Tell me about the history of artificial intelligence",
+            "Search Wikipedia for quantum computing",
             "What's the current temperature in London?",
+            "Tell me about the Python programming language",
         ]
     )
     return interface

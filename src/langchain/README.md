@@ -7,7 +7,10 @@ This directory contains examples and patterns for building AI agents using LangC
 The chat agent pattern demonstrates how to create an interactive AI assistant that can use external tools.  
 Agents use LLMs and have access to tools so that they can chain actions and reasoning to do larger and more complex tasks.
 
-Key features: chained prompt, model, AgentExecutor, tools, and memory.
+Key implementation components of agents are: tools, memory, planning, and models.
+
+![Agent Components](./agent_components.png)
+
 This agent implements the "ReAct" (Reason + Act) pattern, where the agent can:
 
 1. Reason about what tools it needs
@@ -52,6 +55,11 @@ graph TD
    - Gradio interface for web interaction
    - Async support for responsive UX
    - Error handling and user feedback
+
+4. **Automated Evaluation System**:
+   - Response Correctness: Evaluates if responses properly address user queries
+   - Tool Usage: Assesses appropriate tool selection and usage
+   - Factual Accuracy: Verifies response accuracy against tool outputs
 
 ### Best Practices
 

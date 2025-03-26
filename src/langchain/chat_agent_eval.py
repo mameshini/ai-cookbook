@@ -11,22 +11,26 @@ import os
 import requests
 import wikipedia
 import gradio as gr
+from typing import List, Dict, Any
 
 # LangSmith imports
-from langsmith import Client
-from langsmith.evaluation import EvaluationResult, run_evaluator
-from langsmith.schemas import Example, RunTypeEnum
+from langsmith import Client, tracing_context
+from langsmith.evaluation import EvaluationResult
+from pydantic import BaseModel, Field
 
 # Initialize LangSmith client
 langsmith_client = Client()
 
+# Pydantic model for evaluation responses
+class EvaluationResponse(BaseModel):
+    """Response schema for evaluation functions."""
+    score: float = Field(..., description="Score from 0-1 based on the evaluation criteria")
+    reasoning: str = Field(..., description="Detailed explanation for the score")
+
 # Configure LangSmith
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = "ai-cookbook-chat-agent"  # Project name in LangSmith
-from typing import List, Dict, Any
-import json
 from dotenv import load_dotenv, find_dotenv
-from pydantic import BaseModel, Field
 from langchain.tools import tool
 from langchain_openai import AzureChatOpenAI
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -37,7 +41,6 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.agents.format_scratchpad import format_to_openai_functions
 from langchain.globals import set_debug
-
 
 # Load environment variables
 _ = load_dotenv(find_dotenv())  # read local .env file
@@ -60,7 +63,16 @@ class OpenMeteoInput(BaseModel):
 
 @tool(args_schema=OpenMeteoInput)
 def get_current_temperature(latitude: float, longitude: float) -> str:
-    """Fetch current temperature for given latitude and longitude in Fahrenheit"""
+    """Get the current temperature for a location. You should:
+    1. Convert city/location names to coordinates (e.g. San Francisco is at lat=37.7749, long=-122.4194)
+    2. Use those coordinates to fetch the temperature
+    
+    Args:
+        latitude: Latitude of the location (e.g. 37.7749 for San Francisco)
+        longitude: Longitude of the location (e.g. -122.4194 for San Francisco)
+    
+    Returns:
+        str: Current temperature in Fahrenheit"""
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     
     params = {
@@ -286,35 +298,29 @@ def evaluate_response_correctness(run_data: dict) -> EvaluationResult:
     
     eval_chain = AzureChatOpenAI(
         temperature=0,
-        model="gpt-4o"
-    ).bind(functions=[
-        {
-            "name": "score_response",
-            "description": "Score the response correctness",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "score": {
-                        "type": "number",
-                        "description": "Score from 0-1"
-                    },
-                    "reasoning": {
-                        "type": "string",
-                        "description": "Explanation for the score"
-                    }
-                },
-                "required": ["score", "reasoning"]
-            }
-        }
-    ])
+        model="gpt-4o",
+        name="AgentEval"
+    ).bind(
+        functions=[{
+            "name": "evaluate",
+            "description": "Evaluate the response and provide a score with reasoning",
+            "parameters": EvaluationResponse.model_json_schema()
+        }],
+        function_call={"name": "evaluate"}
+    )
     
-    result = eval_chain.invoke(prompt)
-    # Parse function call arguments from AIMessage
-    function_args = json.loads(result.additional_kwargs['function_call']['arguments'])
+    # Disable tracing for evaluation runs
+    with tracing_context(enabled=False):
+        result = eval_chain.invoke(prompt)
+    
+    # Parse function call result
+    function_args = result.additional_kwargs["function_call"]["arguments"]
+    response = EvaluationResponse.model_validate_json(function_args)
+    
     return EvaluationResult(
         key="response_correctness",
-        score=function_args['score'],
-        comment=function_args['reasoning']
+        score=response.score,
+        comment=response.reasoning
     )
 
 
@@ -370,35 +376,29 @@ def evaluate_tool_usage(run_data: dict) -> EvaluationResult:
     
     eval_chain = AzureChatOpenAI(
         temperature=0,
-        model="gpt-4o"
-    ).bind(functions=[
-        {
-            "name": "score_tool_usage",
-            "description": "Score the tool usage appropriateness",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "score": {
-                        "type": "number",
-                        "description": "Score from 0-1"
-                    },
-                    "reasoning": {
-                        "type": "string",
-                        "description": "Explanation for the score"
-                    }
-                },
-                "required": ["score", "reasoning"]
-            }
-        }
-    ])
+        model="gpt-4o",
+        name="AgentEval"
+    ).bind(
+        functions=[{
+            "name": "evaluate",
+            "description": "Evaluate the response and provide a score with reasoning",
+            "parameters": EvaluationResponse.model_json_schema()
+        }],
+        function_call={"name": "evaluate"}
+    )
     
-    result = eval_chain.invoke(prompt)
-    # Parse function call arguments from AIMessage
-    function_args = json.loads(result.additional_kwargs['function_call']['arguments'])
+    # Disable tracing for evaluation runs
+    with tracing_context(enabled=False):
+        result = eval_chain.invoke(prompt)
+    
+    # Parse function call result
+    function_args = result.additional_kwargs["function_call"]["arguments"]
+    response = EvaluationResponse.model_validate_json(function_args)
+    
     return EvaluationResult(
         key="tool_usage",
-        score=function_args['score'],
-        comment=function_args['reasoning']
+        score=response.score,
+        comment=response.reasoning
     )
 
 
@@ -440,35 +440,29 @@ def evaluate_factual_accuracy(run_data: dict) -> EvaluationResult:
     
     eval_chain = AzureChatOpenAI(
         temperature=0,
-        model="gpt-4o"
-    ).bind(functions=[
-        {
-            "name": "score_accuracy",
-            "description": "Score the factual accuracy",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "score": {
-                        "type": "number",
-                        "description": "Score from 0-1"
-                    },
-                    "reasoning": {
-                        "type": "string",
-                        "description": "Explanation for the score"
-                    }
-                },
-                "required": ["score", "reasoning"]
-            }
-        }
-    ])
+        model="gpt-4o",
+        name="AgentEval"
+    ).bind(
+        functions=[{
+            "name": "evaluate",
+            "description": "Evaluate the response and provide a score with reasoning",
+            "parameters": EvaluationResponse.model_json_schema()
+        }],
+        function_call={"name": "evaluate"}
+    )
     
-    result = eval_chain.invoke(prompt)
-    # Parse function call arguments from AIMessage
-    function_args = json.loads(result.additional_kwargs['function_call']['arguments'])
+    # Disable tracing for evaluation runs
+    with tracing_context(enabled=False):
+        result = eval_chain.invoke(prompt)
+    
+    # Parse function call result
+    function_args = result.additional_kwargs["function_call"]["arguments"]
+    response = EvaluationResponse.model_validate_json(function_args)
+    
     return EvaluationResult(
         key="factual_accuracy",
-        score=function_args['score'],
-        comment=function_args['reasoning']
+        score=response.score,
+        comment=response.reasoning
     )
 
 
@@ -479,8 +473,13 @@ def run_evaluations(run_data: dict) -> List[EvaluationResult]:
         run_data: Dictionary containing run information
         
     Returns:
-        List of evaluation results
+        List of evaluation results. Empty list if ONLINE_EVAL is False.
     """
+    # Check if online evaluation is enabled
+    online_eval = os.getenv("ONLINE_EVAL", "False").lower() == "true"
+    if not online_eval:
+        return []
+    
     evaluators = [
         evaluate_response_correctness,
         evaluate_tool_usage,
@@ -495,13 +494,14 @@ def run_evaluations(run_data: dict) -> List[EvaluationResult]:
         except Exception as e:
             print(f"Error in {evaluator.__name__}: {str(e)}")
     
-    # Store evaluation results in the run data
-    run_data['feedback_stats'] = {
-        result.key: {
-            "score": result.score,
-            "comment": result.comment
-        } for result in results
-    }
+    # Store evaluation results in the run data only if we have results
+    if results:
+        run_data['feedback_stats'] = {
+            result.key: {
+                "score": result.score,
+                "comment": result.comment
+            } for result in results
+        }
     
     return results
 
@@ -519,7 +519,10 @@ def chat_response(message: str, history: List[List[str]]) -> str:
             "history_length": len(formatted_history)
         }
         
-        # Get response from agent
+        # Get response from agent with run tracking
+        from langchain.callbacks.tracers.langchain import LangChainTracer
+        
+        tracer = LangChainTracer()
         response = _agent.invoke(
             {
                 "input": message,
@@ -527,18 +530,37 @@ def chat_response(message: str, history: List[List[str]]) -> str:
             },
             config={
                 "metadata": run_metadata,
-                "tags": ["chat-interaction"]
+                "tags": ["chat-interaction"],
+                "callbacks": [tracer]
             }
         )
         
         # Run evaluations
         eval_results = run_evaluations(response)
         
-        # Log evaluation summary
-        avg_score = sum(result.score for result in eval_results) / len(eval_results)
-        print(f"\nEvaluation Summary (avg score: {avg_score:.2f}):")
-        for result in eval_results:
-            print(f"{result.key}: {result.score:.2f} - {result.comment}")
+        # Only process evaluations if we have results
+        if eval_results:
+            avg_score = sum(result.score for result in eval_results) / len(eval_results)
+            
+            run_id = tracer.latest_run.id if tracer.latest_run else None
+            if run_id:
+                # Create feedback in LangSmith
+                langsmith_client.create_feedback(
+                    run_id=run_id,
+                    key="accuracy",
+                    score=avg_score,
+                    comment=f"Average eval score: {avg_score:.2f}. " +
+                           f"Individual scores: {', '.join(f'{r.key}: {r.score:.2f}' for r in eval_results)}"
+                )
+            else:
+                print("Warning: Could not find run_id in response")
+            
+            # Log evaluation summary
+            print(f"\nEvaluation Summary (avg score: {avg_score:.2f}):")
+            for result in eval_results:
+                print(f"{result.key}: {result.score:.2f} - {result.comment}")
+        else:
+            print("\nEvaluations skipped (ONLINE_EVAL=False)")
         
         return response["output"]
     except Exception as e:

@@ -97,6 +97,24 @@ To debug tests:
 
 This project demonstrates several key patterns for working with Azure OpenAI:
 
+#### Langchain Agent Pattern
+- `src/langchain/chat_agent.py`: Implements an intelligent conversational agent using LangChain with:
+  - Azure OpenAI integration using GPT-4
+  - Custom tools for weather lookup, Wikipedia search, and datetime functions
+  - Pydantic models for type-safe input validation
+  - ConversationBufferMemory for context retention
+  - Gradio web interface for interactive chat
+  - Environment variable management with dotenv
+
+- `src/langchain/chat_agent_eval.py`: Implements comprehensive agent evaluation with:
+  - LangSmith integration for run tracking and evaluation
+  - Multiple evaluation criteria:
+    - Response correctness
+    - Tool usage appropriateness
+    - Factual accuracy
+  - Pydantic models for structured evaluation responses
+  - Real-time evaluation during chat interactions
+
 #### Basic Chat Completion
 - `chat.py`: Implements LLM chat completion with:
   - Support for Azure OpenAI GPT-4

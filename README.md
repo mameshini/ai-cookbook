@@ -73,19 +73,18 @@ To debug tests:
 ```
 ├── src/
 │   ├── ai_cookbook/       # Core AI patterns
-│   │   ├── __init__.py
 │   │   ├── chat.py        # Chat completion implementation
 │   │   ├── structured.py  # Structured output pattern
 │   │   ├── tools.py       # Function calling pattern
 │   │   └── retrieval.py   # Knowledge base retrieval
+│   ├── langchain/        # LangChain agent patterns
+│   │   ├── chat_agent.py  # Conversational agent with tools
+│   │   └── chat_agent_eval.py  # Agent observability and evals
 │   └── workflows/         # Advanced workflow patterns
-│       ├── __init__.py
-│       ├── README.md       # Workflow patterns documentation
 │       ├── orchestrator.py  # Blog post orchestration
 │       ├── routing.py      # Request classification
 │       └── parallelization.py  # Concurrent processing
 ├── tests/                 # Test directory
-│   ├── __init__.py
 │   └── test_chat.py      # Tests for chat functionality
 ├── .env.example          # Example environment variables
 ├── .gitignore            # Git ignore file

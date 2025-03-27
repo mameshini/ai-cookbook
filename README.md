@@ -106,14 +106,14 @@ This project demonstrates several key patterns for working with Azure OpenAI:
   - Gradio web interface for interactive chat
   - Environment variable management with dotenv
 
-- `src/langchain/chat_agent_eval.py`: Implements comprehensive agent evaluation with:
+- `src/langchain/chat_agent_eval.py`: Implements agent observability and evals with:
   - LangSmith integration for run tracking and evaluation
   - Multiple evaluation criteria:
     - Response correctness
     - Tool usage appropriateness
     - Factual accuracy
   - Pydantic models for structured evaluation responses
-  - Real-time evaluation during chat interactions
+  - Real-time evaluation metrics during chat interactions
 
 #### Basic Chat Completion
 - `chat.py`: Implements LLM chat completion with:

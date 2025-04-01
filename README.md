@@ -1,7 +1,8 @@
 # AI Cookbook
 
 A collection of AI patterns and recipes using Azure OpenAI GPT-4 and Claude 3.5 Sonnet v2 via AWS Bedrock.
-These patterns can be used to provide examples and architecture guidance for AI Coding Agents when building AI applications
+These patterns can be used to provide examples and architecture guidance for AI Coding Agents when building AI applications.
+
 You can subscribe to Windsurf coding agent at https://codeium.com/refer?referral_code=5o03sz1fshqlzdx0
 
 ## Setup

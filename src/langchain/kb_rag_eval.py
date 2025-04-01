@@ -9,6 +9,8 @@ import os
 from typing import List
 import asyncio
 import boto3
+import datetime
+import csv
 from tqdm import tqdm
 import pandas as pd
 from botocore.config import Config
@@ -176,9 +178,14 @@ class RagEval:
         # merge metric df with dataset df
         results = pd.merge(dataset_df, df_metrics, left_index=True, right_index=True)
 
-        print("Evaluation Results:")
-        print(results.to_string(index=False))
-        
+        # Save results to CSV file
+        current_time = datetime.datetime.now().strftime("%m%d%y %H:%M")
+        eval_dir = os.path.join(os.path.dirname(__file__), 'rag_evals')
+        os.makedirs(eval_dir, exist_ok=True)
+        csv_filename = os.path.join(eval_dir, f"rag_eval_{current_time}.csv")
+        results.to_csv(csv_filename, index=False, escapechar='\\', quoting=csv.QUOTE_ALL)
+        print(f"Results saved to {csv_filename}")
+
         return results
 
 

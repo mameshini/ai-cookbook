@@ -1,0 +1,49 @@
+"questions","ground_truths","answers","context_precision","context_recall","factual_correctness","faithfulness"
+"What was the primary reason for the increase in net cash provided by operating activities for Octank Financial in 2021?","The increase in net cash provided by operating activities was primarily due to an increase in net income and favorable changes in operating assets and liabilities.","According to the context, the increase in net cash provided by operating activities in 2021 was primarily due to two factors:
+1. An increase in net income
+2. Favorable changes in operating assets and liabilities
+
+This led to net cash provided by operating activities of $1,100 million in 2021, compared to $880 million in 2020, representing a significant increase.","0.99999999995","1.0","0.67","1.0"
+"In which year did Octank Financial have the highest net cash used in investing activities, and what was the primary reason for this?","Octank Financial had the highest net cash used in investing activities in 2021, at $360 million, compared to $290 million in 2020 and $240 million in 2019. The primary reason for this was an increase in purchases of property, plant, and equipment and marketable securities.","According to the context, Octank Financial had the highest net cash used in investing activities in 2021 at $360 million, compared to $290 million in 2020 and $240 million in 2019. 
+
+The primary reason for this increase in cash used was ""an increase in purchases of property, plant, and equipment and marketable securities.""","0.99999999995","1.0","0.67","1.0"
+"What was the primary source of cash inflows from financing activities for Octank Financial in 2021?","The primary source of cash inflows from financing activities for Octank Financial in 2021 was an increase in proceeds from the issuance of common stock and long-term debt.","According to the data provided, in 2021 Octank Financial's primary source of cash inflows from financing activities was proceeds from issuance of long-term debt at $500 million, followed closely by proceeds from issuance of common stock at $400 million. While both were significant sources of financing cash flows, the long-term debt issuance provided slightly more cash to the company in 2021.","0.99999999998","1.0","0.0","1.0"
+"Calculate the year-over-year percentage change in cash and cash equivalents for Octank Financial from 2020 to 2021.","To calculate the year-over-year percentage change in cash and cash equivalents from 2020 to 2021: 2020 cash and cash equivalents: $350 million, 2021 cash and cash equivalents: $480 million. The percentage change is ($480M - $350M)/$350M = 37.1% increase.","Based on the provided context, I can calculate the year-over-year percentage change in cash and cash equivalents from 2020 to 2021:
+
+Cash and cash equivalents at the end of 2021: $480 million
+Cash and cash equivalents at the end of 2020: $350 million
+
+Percentage change calculation:
+($480M - $350M)/$350M × 100 = 37.14%
+
+Therefore, Octank Financial's cash and cash equivalents increased by 37.14% from 2020 to 2021.","0.19999999998","0.6666666666666666","0.0","0.4"
+"Based on the information provided, what can you infer about Octank Financial's overall financial health and growth prospects?","Based on the financial data, Octank Financial shows strong growth prospects with increasing operating cash flows, strategic investments in property and equipment, successful capital raising through stock and debt issuance, and a healthy increase in cash reserves. These indicators suggest solid operational performance and effective capital management.","Based on the provided information, I can make several observations about Octank Financial's financial health and growth prospects:
+
+Strengths:
+1. Strong Revenue Growth:
+- Revenue increased from $4.5 billion in 2020 to $5 billion in 2021 (11.1% growth)
+- The company reported solid net income of $1.2 billion in 2021, up from $1.125 billion in 2020
+
+2. Strong Liquidity Position:
+- $1 billion in cash and cash equivalents on the balance sheet
+- Solid balance sheet mentioned multiple times
+
+3. Diverse Business Model:
+- Multiple revenue streams through various services including personal loans, business loans, credit cards, and investment services
+- Diverse professional team of over 1,000 employees across different financial sectors
+
+4. Market Recognition:
+- Won awards including ""Best Personal Loan Provider"" from Money Magazine in 2021
+- Strong reputation for customer service and innovative solutions
+
+Potential Concerns:
+1. Market Risk:
+- The company acknowledges exposure to market risks including interest rates, inflation, economic downturns, and political instability
+- These factors could impact investment performance and financial results
+
+Growth Prospects:
+- The company appears positioned for continued growth through both organic expansion and acquisitions (mentioned acquiring several smaller companies)
+- Strong client-centric focus suggests potential for sustained customer relationships and business growth
+- Diverse service offerings allow for multiple growth channels
+
+Overall, the information suggests Octank Financial is in a strong financial position with positive growth momentum, though like any financial institution, it faces market-related risks that could impact future performance.","0.0","0.16666666666666666","0.0","1.0"

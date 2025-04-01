@@ -74,12 +74,14 @@ class RagEval:
         self.llm = ChatBedrock(
             model_id=model_id,
             client=self.bedrock_client,
-            region_name=region_name
+            region_name=region_name,
+            model_kwargs={"temperature": 0.0, "max_tokens": 4096}
         )
         self.eval_llm = ChatBedrock(
             model_id=eval_model_id,
             client=self.bedrock_client,
-            region_name=region_name
+            region_name=region_name,
+            model_kwargs={"temperature": 0.0, "max_tokens": 4096}
         )
         self.embeddings_llm = BedrockEmbeddings(
             model_id="amazon.titan-embed-text-v2:0",

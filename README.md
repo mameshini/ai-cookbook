@@ -98,7 +98,7 @@ To debug tests:
 
 This project demonstrates several key patterns for building AI agents and workflows.  
 
-#### Langchain Agent Pattern
+#### Agent Pattern (LangChain ReAct with Tools and RAG)
 - `src/langchain/chat_agent.py`: Implements an intelligent conversational agent using LangChain with:
   - Azure OpenAI integration using GPT-4
   - Custom tools for weather lookup, Wikipedia search, RAG, and datetime functions
@@ -138,14 +138,14 @@ This project demonstrates several key patterns for building AI agents and workfl
   - Integration with open-meteo.com weather API
   - Structured responses with natural language context
 
-#### Retrieval Pattern
+#### Retrieval Pattern (see LangChain RAG for advanced retrieval)
 - `retrieval.py`: Knowledge base interaction using:
   - JSON-based e-commerce knowledge store
   - Function calling for policy and service information
   - Graceful handling of out-of-scope questions
   - Source attribution with record IDs
 
-#### Agentic Workflow Patterns
+#### Agentic Workflow Patterns (pure Python)
 - `src/workflows/`: Advanced AI workflow implementations:
   - Orchestration + enriched LLMs form patterns of intelligent outcomes
   - The key patterns are: prompt chaining, routing parallelization orchestration, evaluator-optimizer, and service agent

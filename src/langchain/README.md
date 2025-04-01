@@ -26,7 +26,11 @@ graph TD
     
     C -->|Weather| D[Weather API Tool]
     C -->|Information| E[Wikipedia Tool]
+    C -->|Financial Data| F[RAG Search Tool]
     C -->|Chat| L[LLM]
+    
+    F -->|Query| H[Bedrock Knowledge Base]
+    H -->|Retrieve| F
 
     D --> M[Conversation Memory]
     E --> M[Conversation Memory]
@@ -82,14 +86,28 @@ graph TD
    - Modular tool definitions
    - Clear input/output contracts
    - Reusable components
+   - Integration with AWS Bedrock Knowledge Base
+   - RAG-based search capabilities
 
 ## Implementation Examples
 
 1. `chat_agent.py`: Demonstrates a full chat agent with:
    - Weather lookup capability
    - Wikipedia search integration
+   - Financial and real estate RAG search using Amazon Bedrock Knowledge Base
    - Conversation memory
    - Gradio web interface
+
+2. `chat_agent_eval.py`: Enhanced version of chat agent with:
+   - All features from chat_agent.py
+   - LangSmith integration for response evaluation
+   - Evaluation metrics for response correctness, tool usage, and factual accuracy
+
+3. `kb_rag_eval.py`: RAG evaluation module that:
+   - Evaluates Q&A performance using Amazon Bedrock Knowledge Base
+   - Uses RAGAS framework for comprehensive evaluation metrics
+   - Supports metrics like faithfulness, answer relevancy, context precision
+   - Saves evaluation results to timestamped CSV files
 
 ## Getting Started
 
@@ -100,9 +118,14 @@ graph TD
 
 2. Set up your environment variables:
    ```bash
+   # Azure OpenAI credentials
    AZURE_OPENAI_API_KEY="your_key"
    AZURE_OPENAI_ENDPOINT="your_endpoint"
    AZURE_OPENAI_DEPLOYMENT="your_deployment"
+   
+   # AWS Bedrock configuration
+   AWS_DEFAULT_REGION="us-west-2"
+   KNOWLEDGE_BASE_ID="your_kb_id"
    ```
 
 3. Run the chat agent:

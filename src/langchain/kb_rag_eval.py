@@ -25,6 +25,7 @@ from ragas.metrics import (
     LLMContextPrecisionWithReference,
     LLMContextRecall
 )
+from ragas.metrics._faithfulness import Faithfulness
 from ragas.metrics._factual_correctness import FactualCorrectness
 
 class RagEval:
@@ -34,8 +35,8 @@ class RagEval:
         self,
         kb_id: str,
         region_name: str = "us-west-2",
-        model_id: str = "anthropic.claude-3-haiku-20240307-v1:0",
-        eval_model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0",
+        model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        eval_model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0",
         num_results: int = 5
     ):
         """Initialize the RAG evaluator.
@@ -141,7 +142,8 @@ class RagEval:
 
         metrics = { 'context_precision': LLMContextPrecisionWithReference,
                     'context_recall': LLMContextRecall, 
-                    'factual_correctness': FactualCorrectness
+                    'factual_correctness': FactualCorrectness,
+                    'faithfulness': Faithfulness
                 }
 
         # Model Configuration

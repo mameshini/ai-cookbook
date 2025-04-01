@@ -7,11 +7,15 @@ and Gradio web interface. The agent can perform weather lookups and Wikipedia se
 
 import os
 import datetime
-import os
 import requests
 import wikipedia
 import gradio as gr
 from typing import List, Dict, Any
+import boto3
+from botocore.config import Config
+from langchain.retrievers import AmazonKnowledgeBasesRetriever
+from langchain_community.chat_models import BedrockChat
+from langchain.chains import RetrievalQA
 
 # LangSmith imports
 from langsmith import Client, tracing_context
@@ -125,9 +129,55 @@ def get_current_datetime() -> str:
     return current_time.strftime("%A, %B %d, %Y at %I:%M:%S %p %Z")
 
 
+@tool
+def search_rag(query: str) -> str:
+    """Search financial statements and real estate information using RAG."""
+    # Initialize Bedrock clients
+    region_name = os.getenv('AWS_DEFAULT_REGION', 'us-west-2')
+    kb_id = os.getenv('KNOWLEDGE_BASE_ID', 'Y5UHFTTWAT')  # Default KB ID
+    
+    bedrock_client = boto3.client(
+        service_name='bedrock-runtime',
+        region_name=region_name,
+        config=Config(retries={'max_attempts': 3})
+    )
+    
+    bedrock_agent_client = boto3.client(
+        service_name='bedrock-agent-runtime',
+        region_name=region_name
+    )
+    
+    # Initialize Bedrock chat model
+    llm = BedrockChat(
+        model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        client=bedrock_client,
+        region_name=region_name,
+        model_kwargs={"temperature": 0.0, "max_tokens": 2000}
+    )
+    
+    # Initialize retriever
+    retriever = AmazonKnowledgeBasesRetriever(
+        knowledge_base_id=kb_id,
+        client=bedrock_agent_client,
+        region_name=region_name,
+        retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 3}}
+    )
+    
+    # Initialize QA chain
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=llm,
+        retriever=retriever,
+        return_source_documents=True
+    )
+    
+    # Get response
+    response = qa_chain.invoke(query)
+    return response["result"]
+
+
 def setup_agent() -> AgentExecutor:
     """Set up the LangChain agent with tools and model."""
-    tools = [get_current_temperature, search_wikipedia, get_current_datetime]
+    tools = [get_current_temperature, search_wikipedia, get_current_datetime, search_rag]
     set_debug(True)  # Enable debug mode for detailed logging
     functions = [format_tool_to_openai_function(f) for f in tools]
     
@@ -248,7 +298,7 @@ def create_ui() -> gr.Interface:
         css=css,
         examples=[
             "What's the weather in San Francisco?",
-            "What's the temperature in Tokyo?",
+            "What was the primary reason for the increase in net cash provided by operating activities for Octank Financial in 2021?",
             "Tell me about the history of artificial intelligence",
             "Search Wikipedia for quantum computing",
             "What's the current temperature in London?",

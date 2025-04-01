@@ -95,12 +95,12 @@ To debug tests:
 
 ### Building Blocks and Patterns
 
-This project demonstrates several key patterns for working with Azure OpenAI:
+This project demonstrates several key patterns for building AI agents and workflows.  
 
 #### Langchain Agent Pattern
 - `src/langchain/chat_agent.py`: Implements an intelligent conversational agent using LangChain with:
   - Azure OpenAI integration using GPT-4
-  - Custom tools for weather lookup, Wikipedia search, and datetime functions
+  - Custom tools for weather lookup, Wikipedia search, RAG, and datetime functions
   - Pydantic models for type-safe input validation
   - ConversationBufferMemory for context retention
   - Gradio web interface for interactive chat
@@ -179,6 +179,40 @@ This project demonstrates several key patterns for working with Azure OpenAI:
   - `ReviewFeedback`: Review score and suggested edits
 
 For detailed documentation of these patterns, see `src/workflows/README.md`.
+
+### Chat Agent with Tool Usage
+
+The chat agent pattern demonstrates how to create an interactive AI assistant that can use external tools and memory.  
+Agents use LLMs and have access to tools so that they can chain actions and reasoning to do larger and more complex tasks.
+RAG is used to retrieve relevant information from a knowledge base.
+
+
+```mermaid
+graph TD
+    A[User Input] --> B[LangChain Agent]
+    B --> C{Reason \& Tools}
+    
+    C -->|Financial Data| R[RAG Search Tool]
+    C -->|Weather| D[Weather API Tool]
+    C -->|Information| E[Wikipedia Tool]
+    C -->|Chat| L[LLM]
+
+    R -->|Query| H[Bedrock Knowledge Base]
+    H -->|Retrieve| R
+
+    R --> M[Conversation Memory]
+    D --> M[Conversation Memory]
+    E --> M[Conversation Memory]
+    L --> M[Conversation Memory]
+    
+    M --> EVAL{Agent Finish?}
+
+    EVAL -->|Yes| F[Response Generation]
+    EVAL -->|No| B
+
+    F --> G[User Output]
+```
+
 
 #### Testing
 - `test_chat.py`: Test suite with:

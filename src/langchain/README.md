@@ -22,20 +22,21 @@ This agent implements the "ReAct" (Reason + Act) pattern, where the agent can:
 ```mermaid
 graph TD
     A[User Input] --> B[LangChain Agent]
-    B --> C{Reasoning & Tools}
+    B --> C{Reason \& Tools}
     
+    C -->|Financial Data| R[RAG Search Tool]
     C -->|Weather| D[Weather API Tool]
     C -->|Information| E[Wikipedia Tool]
-    C -->|Financial Data| F[RAG Search Tool]
     C -->|Chat| L[LLM]
-    
-    F -->|Query| H[Bedrock Knowledge Base]
-    H -->|Retrieve| F
 
+    R -->|Query| H[Bedrock Knowledge Base]
+    H -->|Retrieve| R
+
+    R --> M[Conversation Memory]
     D --> M[Conversation Memory]
     E --> M[Conversation Memory]
     L --> M[Conversation Memory]
-
+    
     M --> EVAL{Agent Finish?}
 
     EVAL -->|Yes| F[Response Generation]

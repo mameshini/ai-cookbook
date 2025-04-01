@@ -80,7 +80,8 @@ To debug tests:
 │   │   └── retrieval.py   # Knowledge base retrieval
 │   ├── langchain/        # LangChain agent patterns
 │   │   ├── chat_agent.py  # Conversational agent with tools
-│   │   └── chat_agent_eval.py  # Agent observability and evals
+│   │   ├── chat_agent_eval.py  # Agent observability and evals
+│   │   ├── kb_rag_eval.py # Offline RAG evaluation with with RAGAS metrics
 │   └── workflows/         # Advanced workflow patterns
 │       ├── orchestrator.py  # Blog post orchestration
 │       ├── routing.py      # Request classification

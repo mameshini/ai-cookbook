@@ -136,7 +136,10 @@ def search_rag(query: str) -> str:
         knowledge_base_id=kb_id,
         client=bedrock_agent_client,
         region_name=region_name,
-        retrieval_config={"vectorSearchConfiguration": {"numberOfResults": 5}}
+        retrieval_config={
+            "vectorSearchConfiguration": {"numberOfResults": 5},
+            "overrideSearchType": "HYBRID"
+        }
     )
 
     # Initialize QA chain

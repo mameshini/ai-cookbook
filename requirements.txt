@@ -26,3 +26,4 @@ pypdf
 tqdm
 pandas
 datasets
+huggingface-hub

@@ -574,6 +574,7 @@ def chat_response(message: str, history: List[List[str]]) -> str:
         
         # Get response from agent with run tracking
         from langchain.callbacks.tracers.langchain import LangChainTracer
+        import asyncio
         
         tracer = LangChainTracer()
         response = _agent.invoke(
@@ -588,33 +589,49 @@ def chat_response(message: str, history: List[List[str]]) -> str:
             }
         )
         
-        # Run evaluations
-        eval_results = run_evaluations(response)
+        # Schedule evaluations to run asynchronously
+        async def process_evaluations() -> None:
+            try:
+                # Run evaluations
+                eval_results = run_evaluations(response)
+                
+                # Only process evaluations if we have results
+                if eval_results:
+                    avg_score = sum(result.score for result in eval_results) / len(eval_results)
+                    
+                    run_id = tracer.latest_run.id if tracer.latest_run else None
+                    if run_id:
+                        # Create feedback in LangSmith
+                        langsmith_client.create_feedback(
+                            run_id=run_id,
+                            key="accuracy",
+                            score=avg_score,
+                            comment=f"Average eval score: {avg_score:.2f}. " +
+                                   f"Individual scores: {', '.join(f'{r.key}: {r.score:.2f}' for r in eval_results)}"
+                        )
+                    else:
+                        print("Warning: Could not find run_id in response")
+                    
+                    # Log evaluation summary
+                    print(f"\nEvaluation Summary (avg score: {avg_score:.2f}):")
+                    for result in eval_results:
+                        print(f"{result.key}: {result.score:.2f} - {result.comment}")
+                else:
+                    print("\nEvaluations skipped (ONLINE_EVAL=False)")
+            except Exception as e:
+                print(f"Error in async evaluation: {str(e)}")
         
-        # Only process evaluations if we have results
-        if eval_results:
-            avg_score = sum(result.score for result in eval_results) / len(eval_results)
-            
-            run_id = tracer.latest_run.id if tracer.latest_run else None
-            if run_id:
-                # Create feedback in LangSmith
-                langsmith_client.create_feedback(
-                    run_id=run_id,
-                    key="accuracy",
-                    score=avg_score,
-                    comment=f"Average eval score: {avg_score:.2f}. " +
-                           f"Individual scores: {', '.join(f'{r.key}: {r.score:.2f}' for r in eval_results)}"
-                )
-            else:
-                print("Warning: Could not find run_id in response")
-            
-            # Log evaluation summary
-            print(f"\nEvaluation Summary (avg score: {avg_score:.2f}):")
-            for result in eval_results:
-                print(f"{result.key}: {result.score:.2f} - {result.comment}")
-        else:
-            print("\nEvaluations skipped (ONLINE_EVAL=False)")
+        def run_async_eval():
+            """Run async evaluation in a separate thread."""
+            asyncio.run(process_evaluations())
         
+        # Start evaluation in a separate thread
+        import threading
+        eval_thread = threading.Thread(target=run_async_eval)
+        eval_thread.daemon = True  # Allow the program to exit even if thread is running
+        eval_thread.start()
+        
+        # Return response immediately
         return response["output"]
     except Exception as e:
         return f"Error: {str(e)}"
